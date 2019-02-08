@@ -1,4 +1,5 @@
 #include "ThreadPool.h"
+#include <iostream>
 //----------------------------------------------------------------------------------------------------------------------
 namespace
 {
@@ -29,7 +30,7 @@ ThreadPool::ThreadPool(unsigned int numberOfThreads)
             for(;;)
             {
                 Task currentTask;
-                std::unique_lock<std::mutex> locker(mutex_);
+                std::unique_lock<std::mutex> locker(threadMutex_);
                 waitCondition_.wait(locker, [this, &currentTask] { return destroyFlag_ || tryToGetTask(currentTask); });
 
                 if(destroyFlag_.load())
@@ -43,6 +44,7 @@ ThreadPool::ThreadPool(unsigned int numberOfThreads)
                 currentTask();
             }
         });
+        threads_.push_back(std::move(th));
     }
 }
 //----------------------------------------------------------------------------------------------------------------------
@@ -54,13 +56,14 @@ ThreadPool::~ThreadPool()
     destroyFlag_.store(true);
     for (auto& th : threads_)
     {
-        th.join();
+        if(th.joinable())
+            th.join();
     }
 }
 //----------------------------------------------------------------------------------------------------------------------
 bool ThreadPool::tryToGetTask(Task& t)
 {
-    std::unique_lock<std::mutex> locker(mutex_);
+    std::lock_guard<std::mutex> lock(queueMutex_);
     if(tasks_.empty()) return false;
 
     t.swap(tasks_.front());

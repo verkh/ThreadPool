@@ -26,21 +26,25 @@ public:
     {
         using resultType = typename std::result_of<Function(Args...)>::type;
 
-        auto task = std::packaged_task<resultType()>(std::bind(std::forward<Function>(func),
-                                                         std::forward<Args>(args)...));
+        auto task = std::make_shared<std::packaged_task<resultType()>>(std::bind(std::forward<Function>(func),
+                                                                       std::forward<Args>(args)...));
 
-        auto futureResult = task.get_future();
+        auto futureResult = task->get_future();
 
-        tasks_.emplace({ [t = std::move(task)] { t(); } });
+        std::lock_guard<std::mutex> lock(queueMutex_);
+
+        tasks_.emplace(Task( [task] { (*task)(); } ));
+
+        waitCondition_.notify_one();
 
         return futureResult;
-
     }
 
     bool tryToGetTask(Task& t);
 
 private:
-    std::mutex mutex_;
+    std::mutex threadMutex_;
+    std::mutex queueMutex_;
     std::condition_variable waitCondition_;
     std::atomic_bool destroyFlag_;
     std::vector<std::thread> threads_;
