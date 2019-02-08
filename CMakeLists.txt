@@ -8,9 +8,20 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -pedantic-errors -Werror=return-ty
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
+set(THREAD_POOL_HEADERS
+    src/ThreadPool.h
+    )
+
 set(THREAD_POOL_SOURCES
     src/ThreadPool.cpp
     )
 
-add_library(thread-pool
+add_library(thread-pool SHARED
     ${THREAD_POOL_SOURCES})
+
+install(TARGETS thread-pool
+        DESTINATION "${CMAKE_INSTALL_PREFIX}/lib/")
+
+install(FILES        ${THREAD_POOL_HEADERS}
+        DESTINATION "${CMAKE_INSTALL_PREFIX}/include/ThreadPool")
+
